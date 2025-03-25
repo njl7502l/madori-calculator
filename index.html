@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>間取り図計算ツール</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
+        }
+        
+        /* PC向けレイアウト */
+        @media (min-width: 992px) {
+            .flex-container {
+                display: flex;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            
+            .main-content {
+                flex: 3;
+                background-color: #fafafa;
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+            }
+            
+            .side-panel {
+                flex: 1;
+                min-width: 250px;
+                max-width: 300px;
+                background-color: #fafafa;
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+            }
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        
+        .upload-area.active {
+            border-color: #28a745;
+        }
+        
+        #canvas-container {
+            position: relative;
+            margin: 0 auto;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+            border-radius: 4px;
+        }
+        
+        canvas {
+            display: block;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .mode-btn {
+            flex: 1;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        
+        .mode-btn.active {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .input-group {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .input-group {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+        
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 30px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 5px;
+        }
+        
+        button:hover {
+            background-color: #0069d9;
+        }
+        
+        button:focus {
+            outline: 3px solid rgba(0, 123, 255, 0.3);
+        }
+        
+        #grid-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: move;
+            z-index: 10;
+            pointer-events: none; /* 初期状態では選択操作を通過させる */
+        }
+        
+        .grid-line-h, .grid-line-v {
+            position: absolute;
+            background-color: rgba(255, 0, 0, 0.4);
+            pointer-events: none;
+        }
+        
+        .grid-line-h {
+            height: 1px;
+            width: 100%;
+        }
+        
+        .grid-line-v {
+            width: 1px;
+            height: 100%;
+        }
+        
+        .grid-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            z-index: 20;
+            cursor: pointer;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .notification.success {
+            background-color: #28a745;
+        }
+        
+        .notification.error {
+            background-color: #dc3545;
+        }
+        
+        .notification.info {
+            background-color: #17a2b8;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .control-panel {
+                flex-direction: column;
+            }
+            
+            .input-group {
+                width: 100%;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* アクセシビリティ向上 */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        .input-help {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        /* ローディングインジケーター */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #007bff;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>間取り図計算ツール</h1>
+        
+        <div id="upload-area" class="upload-area" tabindex="0" role="button" aria-label="間取り図をアップロード">
+            <p>間取り図をドラッグ＆ドロップまたはクリックして選択</p>
+            <input type="file" id="file-input" accept="image/*" style="display: none;" aria-hidden="true">
+        </div>
+        
+        <div class="flex-container" id="app-container" style="display: none;">
+            <div class="main-content">
+                <div id="canvas-container">
+                    <canvas id="floor-plan-canvas" aria-label="間取り図キャンバス"></canvas>
+                    <div id="grid-layer"></div>
+                    <div id="loading" class="loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>処理中...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="side-panel">
+                <div class="control-panel" id="control-panel">
+                    <div class="input-group">
+                        <label for="selection-controls">選択操作:</label>
+                        <div id="selection-controls" style="display: flex; gap: 10px;">
+                            <button id="clear-selection-btn" aria-label="選択をクリア">選択クリア</button>
+                            <button id="finish-polygon-btn" aria-label="多角形を閉じる">多角形を閉じる</button>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="area-input">選択範囲の面積:</label>
+                        <input type="number" id="area-input" min="0.5" step="0.5" placeholder="例: 6" aria-describedby="area-input-help">
+                        <div class="input-help">実際の面積を数値で入力してください</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="area-unit">面積単位:</label>
+                        <select id="area-unit">
+                            <option value="jo">帖</option>
+                            <option value="square-meter">m²</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <button id="calculate-btn" aria-label="スケールを計算">スケール計算</button>
+                    </div>
+                    
+                    <div class="input-group">
+                        <button id="reset-btn" aria-label="ツールをリセット">リセット</button>
+                    </div>
+                    
+                    <div class="input-group" id="ruler-controls" style="display: none; margin-top: 20px;">
+                        <h3>方眼グリッド操作</h3>
+                        <p>グリッド全体をドラッグして移動できます</p>
+                        <button id="toggle-grid-btn" aria-label="グリッド表示を隠す">グリッド表示を隠す</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification" role="alert" aria-live="polite"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script>
+    // モジュール化されたアプリケーション
+    class FloorPlanScaleTool {
+        constructor() {
+            // DOM要素
+            this.uploadArea = document.getElementById('upload-area');
+            this.fileInput = document.getElementById('file-input');
+            this.canvasContainer = document.getElementById('canvas-container');
+            this.controlPanel = document.getElementById('control-panel');
+            this.calculateBtn = document.getElementById('calculate-btn');
+            this.resetBtn = document.getElementById('reset-btn');
+            this.clearSelectionBtn = document.getElementById('clear-selection-btn');
+            this.finishPolygonBtn = document.getElementById('finish-polygon-btn');
+            this.loadingIndicator = document.getElementById('loading');
+            
+            // キャンバス初期化
+            this.canvas = null;
+            this.initCanvas();
+            
+            // サブモジュール初期化
+            this.uploader = new FileUploader(this);
+            this.selector = new PolygonSelector(this);
+            this.scaleCalculator = new ScaleCalculator(this);
+            
+            // イベントリスナー設定
+            this.setupEventListeners();
+        }
+        
+        initCanvas() {
+            this.canvas = new fabric.Canvas('floor-plan-canvas', {
+                selection: true,
+                preserveObjectStacking: true
+            });
+            
+            // タッチデバイス対応
+            this.canvas.allowTouchScrolling = true;
+        }
+        
+        setupEventListeners() {
+            // リセットボタン
+            this.resetBtn.addEventListener('click', () => this.resetTool());
+            
+            // 計算ボタン
+            this.calculateBtn.addEventListener('click', () => this.scaleCalculator.calculateScale());
+            
+            // ウィンドウリサイズ
+            window.addEventListener('resize', () => this.handleResize());
+            
+            // キーボードアクセシビリティ
+            this.uploadArea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.fileInput.click();
+                }
+            });
+        }
+        
+        handleResize() {
+            if (this.canvas && this.canvasContainer.clientWidth > 0) {
+                const originalWidth = this.canvas.getWidth();
+                const originalHeight = this.canvas.getHeight();
+                const containerWidth = this.canvasContainer.clientWidth;
+                
+                const scale = containerWidth / originalWidth;
+                const newHeight = originalHeight * scale;
+                
+                this.canvas.setDimensions({
+                    width: containerWidth,
+                    height: newHeight
+                });
+                
+                this.canvas.renderAll();
+            }
+        }
+        
+        resetTool() {
+            // リセット前の確認
+            if (confirm('現在の作業内容をリセットしますか？')) {
+                // キャンバスを完全にリセット
+                if (this.canvas) {
+                    this.canvas.dispose();
+                }
+                
+                // 新しいキャンバスを作成
+                this.initCanvas();
+                
+                // サブモジュールをリセット
+                this.selector.reset();
+                this.scaleCalculator.reset();
+                
+                // UI表示を初期状態に戻す
+                this.uploadArea.style.display = 'block';
+                document.getElementById('app-container').style.display = 'none';
+                
+                // グリッドレイヤーをリセット
+                const gridLayer = document.getElementById('grid-layer');
+                gridLayer.innerHTML = '';
+                gridLayer.style.pointerEvents = 'none';
+                
+                // 入力をリセット
+                document.getElementById('area-input').value = '';
+                document.getElementById('area-unit').selectedIndex = 0;
+                
+                // ファイル入力もリセット
+                this.fileInput.value = '';
+                
+                // 通知
+                this.showNotification('ツールをリセットしました', 'info');
+            }
+        }
+        
+        showNotification(message, type = 'info', duration = 3000) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification ' + type + ' show';
+            
+            setTimeout(() => {
+                notification.className = 'notification ' + type;
+            }, duration);
+        }
+        
+        showLoading(show = true) {
+            this.loadingIndicator.style.display = show ? 'block' : 'none';
+        }
+    }
+
+    // ファイルアップロード処理モジュール
+    class FileUploader {
+        constructor(app) {
+            this.app = app;
+            this.maxImageSize = 10 * 1024 * 1024; // 10MB制限
+            this.maxDimension = 2000; // 最大幅・高さ
+            
+            // イベントリスナー初期化
+            this.initEventListeners();
+        }
+        
+        initEventListeners() {
+            // ファイル選択クリックイベント
+            this.app.uploadArea.addEventListener('click', () => {
+                this.app.fileInput.click();
+            });
+            
+            // ドラッグオーバーイベント
+            this.app.uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                this.app.uploadArea.classList.add('active');
+            });
+            
+            // ドラッグリーブイベント
+            this.app.uploadArea.addEventListener('dragleave', () => {
+                this.app.uploadArea.classList.remove('active');
+            });
+            
+            // ドロップイベント
+            this.app.uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                this.app.uploadArea.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    this.handleFile(e.dataTransfer.files[0]);
+                }
+            });
+            
+            // ファイル選択イベント
+            this.app.fileInput.addEventListener('change', () => {
+                if (this.app.fileInput.files.length) {
+                    this.handleFile(this.app.fileInput.files[0]);
+                }
+            });
+        }
+        
+        handleFile(file) {
+            // ファイルタイプチェック
+            if (!file.type.match('image.*')) {
+                this.app.showNotification('画像ファイルを選択してください', 'error');
+                return;
+            }
+            
+            // ファイルサイズチェック
+            if (file.size > this.maxImageSize) {
+                this.app.showNotification(`ファイルサイズが大きすぎます (最大: ${this.maxImageSize/1024/1024}MB)`, 'error');
+                return;
+            }
+            
+            this.app.showLoading(true);
+            
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    // 画像をロード
+                    const img = new Image();
+                    img.onload = () => {
+                        // 画像の最適化
+                        const optimizedImg = this.optimizeImage(img);
+                        
+                        // キャンバスをリセット
+                        this.app.canvas.clear();
+                        
+                        // 画像をファブリックイメージに変換
+                        fabric.Image.fromURL(optimizedImg.src, (fabricImg) => {
+                            // 画像のサイズに合わせてキャンバスのサイズを設定
+                            this.app.canvas.setWidth(fabricImg.width);
+                            this.app.canvas.setHeight(fabricImg.height);
+                            
+                            // 画像を選択・移動不可に設定
+                            fabricImg.selectable = false;
+                            fabricImg.evented = false;
+                            fabricImg.lockMovementX = true;
+                            fabricImg.lockMovementY = true;
+                            
+                            // 画像を中央に配置
+                            fabricImg.set({
+                                originX: 'center',
+                                originY: 'center',
+                                left: fabricImg.width / 2,
+                                top: fabricImg.height / 2
+                            });
+                            
+                            // 画像をキャンバスに追加
+                            this.app.canvas.add(fabricImg);
+                            this.app.canvas.renderAll();
+                            
+                                            // 表示を切り替え
+                            this.app.uploadArea.style.display = 'none';
+                            document.getElementById('app-container').style.display = 'flex';
+                            
+                            // リサイズイベントを発火
+                            this.app.handleResize();
+                            
+                            this.app.showLoading(false);
+                            this.app.showNotification('画像をロードしました', 'success');
+                        });
+                    };
+                    
+                    img.onerror = () => {
+                        this.app.showLoading(false);
+                        this.app.showNotification('画像の読み込みに失敗しました', 'error');
+                    };
+                    
+                    img.src = e.target.result;
+                } catch (error) {
+                    this.app.showLoading(false);
+                    this.app.showNotification('画像の処理中にエラーが発生しました', 'error');
+                    console.error('画像処理エラー:', error);
+                }
+            };
+            
+            reader.onerror = () => {
+                this.app.showLoading(false);
+                this.app.showNotification('ファイルの読み込みに失敗しました', 'error');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        optimizeImage(img) {
+            // 大きすぎる画像を適切なサイズにリサイズ
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width = img.width;
+            let height = img.height;
+            
+            // サイズ調整が必要な場合
+            if (width > this.maxDimension || height > this.maxDimension) {
+                if (width > height) {
+                    height = height * (this.maxDimension / width);
+                    width = this.maxDimension;
+                } else {
+                    width = width * (this.maxDimension / height);
+                    height = this.maxDimension;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 画像描画
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // 最適化された画像を返す
+            const optimizedImg = new Image();
+            optimizedImg.src = canvas.toDataURL('image/jpeg', 0.85);
+            
+            return optimizedImg;
+        }
+    }
+
+    // 多角形選択モジュール
+    class PolygonSelector {
+        constructor(app) {
+            this.app = app;
+            
+            // 選択中の領域（複数ポイント対応）
+            this.selectedPoints = [];
+            this.isDrawing = false;
+            this.tempLine = null;
+            this.polygonCompleted = false;
+            
+            // イベントリスナー初期化
+            this.initEventListeners();
+        }
+        
+        initEventListeners() {
+            // クリアボタン
+            this.app.clearSelectionBtn.addEventListener('click', () => this.clearSelection());
+            
+            // 多角形を閉じるボタン
+            this.app.finishPolygonBtn.addEventListener('click', () => {
+                if (this.selectedPoints.length > 2) {
+                    this.finishPolygon();
+                } else {
+                    this.app.showNotification('多角形を描くには最低3点が必要です', 'error');
+                }
+            });
+            
+            // キャンバスイベント
+            this.setupCanvasEvents();
+        }
+        
+        setupCanvasEvents() {
+            // マウスダウンイベント（クリック）
+            this.app.canvas.on('mouse:down', (options) => {
+                if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
+                
+                const pointer = options.pointer;
+                
+                // 最初の点の近くをクリックで多角形を閉じる
+                if (this.selectedPoints.length > 2 && 
+                    Math.abs(pointer.x - this.selectedPoints[0].x) < 20 && 
+                    Math.abs(pointer.y - this.selectedPoints[0].y) < 20) {
+                    
+                    this.finishPolygon();
+                    return;
+                }
+                
+                this.selectedPoints.push({x: pointer.x, y: pointer.y});
+                this.drawPolygonLines();
+                
+                // 最初の点をハイライト表示
+                if (this.selectedPoints.length === 1) {
+                    this.highlightFirstPoint();
+                }
+            });
+            
+            // マウス移動イベント
+            this.app.canvas.on('mouse:move', (options) => {
+                if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
+                
+                const pointer = options.pointer;
+                
+                if (this.selectedPoints.length > 0) {
+                    // 多角形の一時的な線を更新
+                    this.updateTempPolygonLine(pointer);
+                    
+                    // 最初の点の近くにマウスがあるかチェック
+                    if (this.selectedPoints.length > 2 && 
+                        Math.abs(pointer.x - this.selectedPoints[0].x) < 20 && 
+                        Math.abs(pointer.y - this.selectedPoints[0].y) < 20) {
+                        this.highlightClosablePoint();
+                    } else {
+                        this.removeClosableHighlight();
+                    }
+                }
+            });
+            
+            // タッチデバイス用イベント
+            this.app.canvas.on('touch:gesture', (options) => {
+                // ピンチズームなどのジェスチャー処理をここに実装
+            });
+        }
+        
+        reset() {
+            this.selectedPoints = [];
+            this.isDrawing = false;
+            this.tempLine = null;
+            this.polygonCompleted = false;
+        }
+        
+        clearSelection() {
+            // 選択に関連するすべての要素を削除
+            this.app.canvas.getObjects().forEach(obj => {
+                if (obj.id && (
+                    obj.id.startsWith('selection-') || 
+                    obj.id === 'polygon' ||
+                    obj.id === 'first-point-highlight' ||
+                    obj.id === 'closable-highlight' ||
+                    obj.id === 'completed-polygon' ||
+                    obj.id === 'completion-message' ||
+                    obj.id === 'selection-polygon-area'
+                )) {
+                    this.app.canvas.remove(obj);
+                }
+            });
+            
+            // 選択状態をリセット
+            this.selectedPoints = [];
+            this.isDrawing = false;
+            this.tempLine = null;
+            this.polygonCompleted = false;
+            
+            // スケール計算結果もリセット
+            this.app.scaleCalculator.reset();
+            
+            // グリッド操作コントロールを非表示
+            document.getElementById('ruler-controls').style.display = 'none';
+            
+            // グリッドレイヤーをクリア
+            const gridLayer = document.getElementById('grid-layer');
+            gridLayer.innerHTML = '';
+            gridLayer.style.pointerEvents = 'none';
+            
+            // 成功メッセージを削除
+            const existingMsg = document.querySelector('.success-message');
+            if (existingMsg) {
+                existingMsg.remove();
+            }
+            
+            this.app.canvas.renderAll();
+            this.app.showNotification('選択をクリアしました。新しい選択を始めてください。', 'info');
+        }
+        
+        drawPolygonLines() {
+            // 既存の多角形線を削除
+            this.app.canvas.getObjects().forEach(obj => {
+                if (obj.id && obj.id.startsWith('selection-polygon')) {
+                    this.app.canvas.remove(obj);
+                }
+            });
+            
+            // 点を結ぶ線を描画
+            for (let i = 0; i < this.selectedPoints.length - 1; i++) {
+                const line = new fabric.Line(
+                    [this.selectedPoints[i].x, this.selectedPoints[i].y, 
+                     this.selectedPoints[i+1].x, this.selectedPoints[i+1].y],
+                    {
+                        stroke: 'red',
+                        strokeWidth: 2,
+                        selectable: false,
+                        id: `selection-polygon-${i}`
+                    }
+                );
+                this.app.canvas.add(line);
+            }
+            
+            // 頂点を描画
+            this.selectedPoints.forEach((point, index) => {
+                const circle = new fabric.Circle({
+                    left: point.x - 4,
+                    top: point.y - 4,
+                    radius: 4,
+                    fill: 'red',
+                    selectable: false,
+                    id: `selection-polygon-point-${index}`
+                });
+                this.app.canvas.add(circle);
+            });
+            
+            this.app.canvas.renderAll();
+        }
+        
+        updateTempPolygonLine(pointer) {
+            // 一時的な線を更新
+            this.app.canvas.getObjects().forEach(obj => {
+                if (obj.id === 'selection-polygon-temp') {
+                    this.app.canvas.remove(obj);
+                }
+            });
+            
+            if (this.selectedPoints.length > 0) {
+                const lastPoint = this.selectedPoints[this.selectedPoints.length - 1];
+                const tempLine = new fabric.Line(
+                    [lastPoint.x, lastPoint.y, pointer.x, pointer.y],
+                    {
+                        stroke: 'red',
+                        strokeWidth: 2,
+                        strokeDashArray: [5, 5],
+                        selectable: false,
+                        id: 'selection-polygon-temp'
+                    }
+                );
+                
+                this.app.canvas.add(tempLine);
+                this.app.canvas.renderAll();
+            }
+        }
+        
+        finishPolygon() {
+            // 一時的な線やハイライトを削除
+            this.app.canvas.getObjects().forEach(obj => {
+                if (obj.id === 'selection-polygon-temp' || 
+                    obj.id === 'closable-highlight') {
+                    this.app.canvas.remove(obj);
+                }
+            });
+            
+            // 最後の点から最初の点へ線を引く
+            if (this.selectedPoints.length > 2) {
+                const line = new fabric.Line(
+                    [this.selectedPoints[this.selectedPoints.length - 1].x, this.selectedPoints[this.selectedPoints.length - 1].y, 
+                     this.selectedPoints[0].x, this.selectedPoints[0].y],
+                    {
+                        stroke: 'red',
+                        strokeWidth: 2,
+                        selectable: false,
+                        id: `selection-polygon-${this.selectedPoints.length - 1}`
+                    }
+                );
+                this.app.canvas.add(line);
+                
+                // 完成した多角形を塗りつぶして表示
+                const polygonPoints = [];
+                this.selectedPoints.forEach(point => {
+                    polygonPoints.push({x: point.x, y: point.y});
+                });
+                
+                const polygon = new fabric.Polygon(polygonPoints, {
+                    fill: 'rgba(255, 0, 0, 0.2)',
+                    stroke: 'red',
+                    strokeWidth: 2,
+                    selectable: false,
+                    id: 'completed-polygon',
+                });
+                
+                // 多角形を一番下に配置（画像の上に表示）
+                this.app.canvas.insertAt(polygon, 1);
+                
+                // 多角形の面積を計算して表示
+                const area = this.calculatePolygonArea(this.selectedPoints);
+                const centroid = this.calculatePolygonCentroid(this.selectedPoints);
+                const areaText = new fabric.Text(
+                    `選択範囲の面積: ${area.toFixed(0)}px²`, 
+                    {
+                        left: centroid.x,
+                        top: centroid.y + 10,
+                        fontSize: 14,
+                        fill: 'black',
+                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                        padding: 5,
+                        selectable: false,
+                        id: 'selection-polygon-area',
+                        originX: 'center'
+                    }
+                );
+                this.app.canvas.add(areaText);
+            }
+            
+            this.app.canvas.renderAll();
+            
+            // 選択完了フラグを設定
+            this.isDrawing = false;
+            this.polygonCompleted = true;
+            
+            this.app.showNotification('多角形選択が完了しました', 'success');
+        }
+        
+        calculatePolygonArea(points) {
+            let area = 0;
+            const n = points.length;
+            
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += points[i].x * points[j].y;
+                area -= points[j].x * points[i].y;
+            }
+            
+            return Math.abs(area / 2);
+        }
+        
+        calculatePolygonCentroid(points) {
+            let area = 0;
+            let cx = 0;
+            let cy = 0;
+            const n = points.length;
+            
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                const f = points[i].x * points[j].y - points[j].x * points[i].y;
+                cx += (points[i].x + points[j].x) * f;
+                cy += (points[i].y + points[j].y) * f;
+                area += f;
+            }
+            
+            area /= 2;
+            cx /= (6 * area);
+            cy /= (6 * area);
+            
+            return { x: Math.abs(cx), y: Math.abs(cy) };
+        }
+        
+        highlightFirstPoint() {
+            const point = this.selectedPoints[0];
+            const firstPointHighlight = new fabric.Circle({
+                left: point.x - 8,
+                top: point.y - 8,
+                radius: 8,
+                fill: 'rgba(0, 255, 0, 0.5)',
+                stroke: 'green',
+                strokeWidth: 2,
+                selectable: false,
+                id: 'first-point-highlight'
+            });
+            this.app.canvas.add(firstPointHighlight);
+            this.app.canvas.renderAll();
+        }
+        
+        highlightClosablePoint() {
+            this.removeClosableHighlight();
+            
+            const point = this.selectedPoints[0];
+            const closableHighlight = new fabric.Circle({
+                left: point.x - 12,
+                top: point.y - 12,
+                radius: 12,
+                fill: 'rgba(255, 255, 0, 0.5)',
+                stroke: 'orange',
+                strokeWidth: 3,
+                selectable: false,
+                id: 'closable-highlight'
+            });
+            this.app.canvas.add(closableHighlight);
+            this.app.canvas.bringToFront(closableHighlight);
+            this.app.canvas.renderAll();
+        }
+        
+        removeClosableHighlight() {
+            this.app.canvas.getObjects().forEach(obj => {
+                if (obj.id === 'closable-highlight') {
+                    this.app.canvas.remove(obj);
+                }
+            });
+            this.app.canvas.renderAll();
+        }
+        
+        getSelectedPoints() {
+            return this.selectedPoints;
+        }
+        
+        isPolygonCompleted() {
+            return this.polygonCompleted;
+        }
+    }
+
+    // スケール計算モジュール
+    class ScaleCalculator {
+        constructor(app) {
+            this.app = app;
+            
+            // スケール情報
+            this.scale = {
+                pixelsPerMeter: 0,
+                calculatedFrom: null
+            };
+            
+            // 帖のサイズ定義 (m²)
+            this.joSizes = {
+                'standard': 1.62  // 標準的な帖のサイズ (1.8m x 0.9m)
+            };
+            
+            // グリッド移動用の変数
+            this.isDraggingGrid = false;
+            this.gridOffset = { x: 0, y: 0 };
+            this.dragStartX = 0;
+            this.dragStartY = 0;
+            
+            // グリッド表示状態
+            this.isGridVisible = true;
+            
+            // グリッドレイヤー参照
+            this.gridLayer = document.getElementById('grid-layer');
+        }
+        
+        reset() {
+            this.scale = {
+                pixelsPerMeter: 0,
+                calculatedFrom: null
+            };
+            this.gridOffset = { x: 0, y: 0 };
+            this.isGridVisible = true;
+            
+            // グリッドをクリア
+            if (this.gridLayer) {
+                this.gridLayer.innerHTML = '';
+                this.gridLayer.style.pointerEvents = 'none'; // 選択可能にするため
+                this.gridLayer.style.visibility = 'visible'; // 初期状態は表示
+            }
+            
+            // グリッド操作説明を非表示
+            document.getElementById('ruler-controls').style.display = 'none';
+        }
+        
+        isScaleSet() {
+            return this.scale.calculatedFrom !== null;
+        }
+        
+        calculateScale() {
+            const areaInput = parseFloat(document.getElementById('area-input').value);
+            const selectedAreaUnit = document.getElementById('area-unit').value;
+            
+            if (isNaN(areaInput) || areaInput <= 0) {
+                this.app.showNotification('有効な面積を入力してください', 'error');
+                return;
+            }
+            
+            const selectedPoints = this.app.selector.getSelectedPoints();
+            
+            if (selectedPoints.length < 3 || !this.app.selector.isPolygonCompleted()) {
+                this.app.showNotification('多角形による範囲選択を先に行い、閉じてください', 'error');
+                return;
+            }
+            
+            // 多角形の面積を計算
+            const pixelArea = this.app.selector.calculatePolygonArea(selectedPoints);
+            
+            // 単位に応じた実際の面積を計算
+            let realArea;
+            if (selectedAreaUnit === 'jo') {
+                realArea = areaInput * this.joSizes.standard;
+            } else {
+                realArea = areaInput; // m²
+            }
+            
+            // スケールを計算 (ピクセル/メートル)
+            // √(pixelArea/realArea)を計算して線形スケール係数を求める
+            this.scale.pixelsPerMeter = Math.sqrt(pixelArea / realArea);
+            
+            this.scale.calculatedFrom = {
+                area: areaInput,
+                areaUnit: selectedAreaUnit
+            };
+            
+            // 1mグリッドを表示
+            this.drawGrid();
+            
+            // グリッド操作の説明を表示
+            document.getElementById('ruler-controls').style.display = 'block';
+            
+            // 表示切替ボタンのイベントリスナーを設定
+            document.getElementById('toggle-grid-btn').addEventListener('click', () => this.toggleGridVisibility());
+            
+            // 成功メッセージを表示
+            const scaleInfoDiv = document.createElement('div');
+            scaleInfoDiv.className = 'success-message';
+            scaleInfoDiv.innerHTML = `
+                <div style="background-color: #d4edda; color: #155724; padding: 15px; 
+                            border-radius: 5px; margin-top: 15px; text-align: center;">
+                    <p style="font-size: 16px; font-weight: bold; margin: 0;">スケール計算完了!</p>
+                    <p style="margin: 10px 0 0;">1メートル = ${this.scale.pixelsPerMeter.toFixed(2)}ピクセル</p>
+                </div>
+            `;
+            
+            // 既存のメッセージを削除
+            const existingMsg = document.querySelector('.success-message');
+            if (existingMsg) {
+                existingMsg.remove();
+            }
+            
+            // メッセージを追加
+            this.app.controlPanel.appendChild(scaleInfoDiv);
+            
+            // グリッドレイヤーを操作可能にする
+            this.gridLayer.style.pointerEvents = 'auto';
+            
+            this.app.showNotification('スケール計算が完了しました', 'success');
+        }
+        
+        // グリッドの表示/非表示を切り替え
+        toggleGridVisibility() {
+            this.isGridVisible = !this.isGridVisible;
+            
+            if (this.isGridVisible) {
+                this.gridLayer.style.visibility = 'visible';
+                document.getElementById('toggle-grid-btn').textContent = 'グリッド表示を隠す';
+                this.app.showNotification('グリッドを表示しました', 'info');
+            } else {
+                this.gridLayer.style.visibility = 'hidden';
+                document.getElementById('toggle-grid-btn').textContent = 'グリッドを表示';
+                this.app.showNotification('グリッドを非表示にしました', 'info');
+            }
+        }
+        
+        drawGrid() {
+            // グリッドレイヤーのリファレンスを取得
+            this.gridLayer = document.getElementById('grid-layer');
+            this.gridLayer.innerHTML = '';
+            
+            const canvasWidth = this.app.canvas.getWidth();
+            const canvasHeight = this.app.canvas.getHeight();
+            
+            // グリッドの範囲を計算（余裕を持たせる）
+            const numHorizontalLines = Math.ceil(canvasHeight / this.scale.pixelsPerMeter) + 10;
+            const numVerticalLines = Math.ceil(canvasWidth / this.scale.pixelsPerMeter) + 10;
+            
+            // 水平線を描画
+            for (let i = 0; i < numHorizontalLines; i++) {
+                const line = document.createElement('div');
+                line.className = 'grid-line-h';
+                line.style.top = `${i * this.scale.pixelsPerMeter}px`;
+                this.gridLayer.appendChild(line);
+            }
+            
+            // 垂直線を描画
+            for (let i = 0; i < numVerticalLines; i++) {
+                const line = document.createElement('div');
+                line.className = 'grid-line-v';
+                line.style.left = `${i * this.scale.pixelsPerMeter}px`;
+                this.gridLayer.appendChild(line);
+            }
+            
+            // ドラッグ機能を設定
+            this.setupGridDrag();
+        }
+        
+        setupGridDrag() {
+            // レイヤー全体をドラッグ可能にする
+            this.gridLayer.style.cursor = 'move';
+            
+            // マウスダウン時のイベント
+            this.gridLayer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.isDraggingGrid = true;
+                this.dragStartX = e.clientX;
+                this.dragStartY = e.clientY;
+                
+                // 初期オフセットを保存
+                this.initialOffset = { 
+                    x: this.gridOffset.x, 
+                    y: this.gridOffset.y 
+                };
+                
+                // マウス移動イベントを追加
+                document.addEventListener('mousemove', this.handleGridDrag);
+                
+                // マウスアップイベントを追加
+                document.addEventListener('mouseup', this.handleGridDragEnd);
+            });
+            
+            // タッチデバイス用イベント
+            this.gridLayer.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                
+                e.preventDefault();
+                this.isDraggingGrid = true;
+                this.dragStartX = e.touches[0].clientX;
+                this.dragStartY = e.touches[0].clientY;
+                
+                // 初期オフセットを保存
+                this.initialOffset = { 
+                    x: this.gridOffset.x, 
+                    y: this.gridOffset.y 
+                };
+                
+                // タッチ移動イベントを追加
+                document.addEventListener('touchmove', this.handleGridTouchDrag);
+                
+                // タッチエンドイベントを追加
+                document.addEventListener('touchend', this.handleGridDragEnd);
+            });
+        }
+        
+        // グリッドドラッグ中のイベントハンドラ (マウス)
+        handleGridDrag = (e) => {
+            if (!this.isDraggingGrid) return;
+            
+            e.preventDefault();
+            
+            const dx = e.clientX - this.dragStartX;
+            const dy = e.clientY - this.dragStartY;
+            
+            this.moveGrid(dx, dy);
+        }
+        
+        // グリッドドラッグ中のイベントハンドラ (タッチ)
+        handleGridTouchDrag = (e) => {
+            if (!this.isDraggingGrid || e.touches.length !== 1) return;
+            
+            e.preventDefault();
+            
+            const dx = e.touches[0].clientX - this.dragStartX;
+            const dy = e.touches[0].clientY - this.dragStartY;
+            
+            this.moveGrid(dx, dy);
+        }
+        
+        // グリッドを移動
+        moveGrid(dx, dy) {
+            // 新しいオフセットを計算
+            this.gridOffset.x = this.initialOffset.x + dx;
+            this.gridOffset.y = this.initialOffset.y + dy;
+            
+            // グリッドレイヤーの位置を更新
+            this.updateGridPosition();
+        }
+        
+        // グリッドの位置を更新
+        updateGridPosition() {
+            // 水平線の位置を更新
+            const horizontalLines = this.gridLayer.querySelectorAll('.grid-line-h');
+            horizontalLines.forEach((line, index) => {
+                const originalTop = index * this.scale.pixelsPerMeter;
+                line.style.top = `${originalTop + this.gridOffset.y}px`;
+            });
+            
+            // 垂直線の位置を更新
+            const verticalLines = this.gridLayer.querySelectorAll('.grid-line-v');
+            verticalLines.forEach((line, index) => {
+                const originalLeft = index * this.scale.pixelsPerMeter;
+                line.style.left = `${originalLeft + this.gridOffset.x}px`;
+            });
+        }
+        
+        // グリッドドラッグ終了時のイベントハンドラ
+        handleGridDragEnd = (e) => {
+            if (!this.isDraggingGrid) return;
+            
+            // ドラッグ終了
+            this.isDraggingGrid = false;
+            
+            // イベントリスナーを削除
+            document.removeEventListener('mousemove', this.handleGridDrag);
+            document.removeEventListener('touchmove', this.handleGridTouchDrag);
+            document.removeEventListener('mouseup', this.handleGridDragEnd);
+            document.removeEventListener('touchend', this.handleGridDragEnd);
+        }
+        
+        // ドラッグをキャンセル（ESCキー用）
+        cancelGridDrag() {
+            if (!this.isDraggingGrid) return;
+            
+            // 元の位置に戻す
+            this.gridOffset = this.initialOffset;
+            this.updateGridPosition();
+            
+            // ドラッグ終了
+            this.handleGridDragEnd();
+            
+            this.app.showNotification('グリッド移動をキャンセルしました', 'info');
+        }
+    }
+
+    // アプリケーション初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        const app = new FloorPlanScaleTool();
+    });
+    </script>
+</body>
+</html>
