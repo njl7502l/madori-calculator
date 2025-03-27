@@ -69,9 +69,74 @@ class PolygonSelector {
             }
         });
         
-        // タッチデバイス用イベント
-        this.app.canvas.on('touch:gesture', (options) => {
-            // ピンチズームなどのジェスチャー処理をここに実装
+        this.app.canvas.on('touch:longpress', (options) => {
+            if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
+            
+            const pointer = options.pointer;
+            
+            // 最初の点の近くをタップで多角形を閉じる
+            if (this.selectedPoints.length > 2 && 
+                Math.abs(pointer.x - this.selectedPoints[0].x) < 30 && 
+                Math.abs(pointer.y - this.selectedPoints[0].y) < 30) {
+                
+                this.finishPolygon();
+                return;
+            }
+            
+            this.selectedPoints.push({x: pointer.x, y: pointer.y});
+            this.drawPolygonLines();
+            
+            // 最初の点をハイライト表示
+            if (this.selectedPoints.length === 1) {
+                this.highlightFirstPoint();
+            }
+        });
+        
+        // 通常のタップイベントもサポート
+        this.app.canvas.on('touch:tap', (options) => {
+            // longpressが動作しない場合のフォールバック
+            if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
+            
+            // タップ位置を取得
+            const pointer = options.pointer;
+            
+            // 最初の点の近くをタップで多角形を閉じる
+            if (this.selectedPoints.length > 2 && 
+                Math.abs(pointer.x - this.selectedPoints[0].x) < 30 && 
+                Math.abs(pointer.y - this.selectedPoints[0].y) < 30) {
+                
+                this.finishPolygon();
+                return;
+            }
+            
+            this.selectedPoints.push({x: pointer.x, y: pointer.y});
+            this.drawPolygonLines();
+            
+            // 最初の点をハイライト表示
+            if (this.selectedPoints.length === 1) {
+                this.highlightFirstPoint();
+            }
+        });
+        
+        // タッチ移動イベント
+        this.app.canvas.on('touch:move', (options) => {
+            if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
+            
+            const pointer = options.pointer;
+            
+            if (this.selectedPoints.length > 0) {
+                // 多角形の一時的な線を更新
+                this.updateTempPolygonLine(pointer);
+                
+                // 最初の点の近くにタッチポイントがあるかチェック
+                if (this.selectedPoints.length > 2 && 
+                    Math.abs(pointer.x - this.selectedPoints[0].x) < 30 && 
+                    Math.abs(pointer.y - this.selectedPoints[0].y) < 30) {
+                    this.highlightClosablePoint();
+                } else {
+                    this.removeClosableHighlight();
+                }
+            }
         });
     }
     
@@ -296,13 +361,16 @@ class PolygonSelector {
     
     highlightFirstPoint() {
         const point = this.selectedPoints[0];
+        const isMobile = window.innerWidth <= 768;
+        const radius = isMobile ? 12 : 8; // モバイルの場合はより大きなサイズに
+        
         const firstPointHighlight = new fabric.Circle({
-            left: point.x - 8,
-            top: point.y - 8,
-            radius: 8,
+            left: point.x - radius,
+            top: point.y - radius,
+            radius: radius,
             fill: 'rgba(0, 255, 0, 0.5)',
             stroke: 'green',
-            strokeWidth: 2,
+            strokeWidth: isMobile ? 3 : 2, // モバイルの場合は線を太く
             selectable: false,
             id: 'first-point-highlight'
         });
@@ -312,15 +380,18 @@ class PolygonSelector {
     
     highlightClosablePoint() {
         this.removeClosableHighlight();
-        
+    
         const point = this.selectedPoints[0];
+        const isMobile = window.innerWidth <= 768;
+        const radius = isMobile ? 18 : 12; // モバイルの場合はより大きなサイズに
+        
         const closableHighlight = new fabric.Circle({
-            left: point.x - 12,
-            top: point.y - 12,
-            radius: 12,
+            left: point.x - radius,
+            top: point.y - radius,
+            radius: radius,
             fill: 'rgba(255, 255, 0, 0.5)',
             stroke: 'orange',
-            strokeWidth: 3,
+            strokeWidth: isMobile ? 4 : 3, // モバイルの場合は線を太く
             selectable: false,
             id: 'closable-highlight'
         });

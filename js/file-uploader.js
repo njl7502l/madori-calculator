@@ -80,7 +80,14 @@ class FileUploader {
                         
                         // コンテナに合わせて適切なサイズを計算
                         const containerWidth = this.app.canvasContainer.clientWidth;
-                        const containerHeight = this.app.canvasContainer.clientHeight || window.innerHeight * 0.7;
+                        
+                        // モバイルかどうかを判定
+                        const isMobile = window.innerWidth <= 768;
+                        
+                        // モバイルの場合は高さの制約を変更
+                        const containerHeight = isMobile 
+                            ? Math.min(window.innerHeight * 0.5, 450) 
+                            : (this.app.canvasContainer.clientHeight || window.innerHeight * 0.7);
                         
                         // アスペクト比を維持しながらコンテナに収まるサイズを計算
                         const scale = Math.min(
@@ -88,12 +95,20 @@ class FileUploader {
                             containerHeight / fabricImg.height
                         );
                         
-                        const scaledWidth = fabricImg.width * scale;
-                        const scaledHeight = fabricImg.height * scale;
+                        // モバイルの場合はさらに拡大率を調整（小さすぎる場合）
+                        const adjustedScale = isMobile && scale < 0.5 ? Math.min(scale * 1.5, 1) : scale;
+                        
+                        const scaledWidth = fabricImg.width * adjustedScale;
+                        const scaledHeight = fabricImg.height * adjustedScale;
                         
                         // キャンバスのサイズを設定
                         this.app.canvas.setWidth(scaledWidth);
                         this.app.canvas.setHeight(scaledHeight);
+                        
+                        // モバイルの場合、キャンバスコンテナの高さを明示的に設定
+                        if (isMobile) {
+                            this.app.canvasContainer.style.height = `${scaledHeight}px`;
+                        }
                         
                         // 画像を選択・移動不可に設定
                         fabricImg.selectable = false;

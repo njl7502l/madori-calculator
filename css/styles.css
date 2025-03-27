@@ -20,30 +20,41 @@ h1 {
     box-sizing: border-box;
 }
 
+/* 基本レイアウト - スマートフォン向けがデフォルト */
+.flex-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.main-content, .side-panel {
+    width: 100%;
+    background-color: #fafafa;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+    margin: 0;
+}
+
 /* PC向けレイアウト */
 @media (min-width: 992px) {
     .flex-container {
-        display: flex;
-        gap: 20px;
+        flex-direction: row;
         align-items: flex-start;
     }
     
     .main-content {
         flex: 3;
-        background-color: #fafafa;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
     }
     
     .side-panel {
         flex: 1;
         min-width: 250px;
         max-width: 300px;
-        background-color: #fafafa;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
     }
 }
 
@@ -75,14 +86,78 @@ h1 {
     align-items: center;
     background-color: #fff;
     border-radius: 4px;
-    max-height: 70vh; /* ビューポート高さの70%を最大とする */
     width: 100%;
+}
+
+/* スマートフォン向けキャンバスサイズ調整 */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .flex-container {
+        gap: 10px;
+        padding: 0;
+    }
+    
+    .main-content, .side-panel {
+        width: 100%;
+        padding: 12px;
+        margin: 0;
+        border-radius: 8px;
+    }
+    
+    /* アップロードエリアの余白調整 */
+    .upload-area {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* 入力フィールドの余白調整 */
+    .input-group {
+        margin-bottom: 10px;
+    }
+    
+    input, select {
+        padding: 8px;
+    }
+    
+    button {
+        padding: 8px;
+    }
+    
+    label {
+        margin-bottom: 5px;
+    }
+    
+    #canvas-container {
+        min-height: 300px;
+        max-height: 450px;
+    }
+    
+    canvas {
+        max-height: 450px;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+}
+
+/* PC向けキャンバスサイズ */
+@media (min-width: 769px) {
+    #canvas-container {
+        max-height: 70vh;
+    }
+    
+    canvas {
+        max-height: 70vh;
+    }
 }
 
 canvas {
     display: block;
     max-width: 100%;
-    max-height: 70vh; /* キャンバスも最大高さを制限 */
     margin: 0 auto;
     object-fit: contain; /* アスペクト比を保ちながら表示 */
 }
@@ -263,21 +338,6 @@ button:focus {
 .reset-icon {
     font-size: 20px;
     font-weight: bold;
-}
-
-/* モバイル対応 */
-@media (max-width: 768px) {
-    .control-panel {
-        flex-direction: column;
-    }
-    
-    .input-group {
-        width: 100%;
-    }
-    
-    h1 {
-        font-size: 1.5rem;
-    }
 }
 
 /* アクセシビリティ向上 */

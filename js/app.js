@@ -62,7 +62,14 @@ class FloorPlanScaleTool {
                 
                 // コンテナのサイズを取得
                 const containerWidth = this.canvasContainer.clientWidth;
-                const containerHeight = this.canvasContainer.clientHeight || window.innerHeight * 0.7;
+                
+                // モバイルかどうかを判定
+                const isMobile = window.innerWidth <= 768;
+                
+                // モバイルの場合は画面幅の80%を使用し、最大高さも調整
+                const containerHeight = isMobile 
+                    ? Math.min(window.innerHeight * 0.5, 450) 
+                    : (this.canvasContainer.clientHeight || window.innerHeight * 0.7);
                 
                 // アスペクト比を維持しながらコンテナに収まるサイズを計算
                 const scale = Math.min(
@@ -70,8 +77,11 @@ class FloorPlanScaleTool {
                     containerHeight / originalHeight
                 );
                 
-                const scaledWidth = originalWidth * scale;
-                const scaledHeight = originalHeight * scale;
+                // モバイルの場合はさらに拡大率を調整（小さすぎる場合）
+                const adjustedScale = isMobile && scale < 0.5 ? Math.min(scale * 1.5, 1) : scale;
+                
+                const scaledWidth = originalWidth * adjustedScale;
+                const scaledHeight = originalHeight * adjustedScale;
                 
                 // キャンバスのサイズを更新
                 this.canvas.setDimensions({
@@ -90,6 +100,11 @@ class FloorPlanScaleTool {
                             top: scaledHeight / 2
                         });
                     }
+                }
+                
+                // モバイルの場合、キャンバスコンテナの高さを明示的に設定
+                if (isMobile) {
+                    this.canvasContainer.style.height = `${scaledHeight}px`;
                 }
                 
                 this.canvas.renderAll();
