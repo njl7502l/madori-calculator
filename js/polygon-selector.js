@@ -149,7 +149,8 @@ class PolygonSelector {
                     stroke: 'red',
                     strokeWidth: 2,
                     selectable: false,
-                    id: `selection-polygon-${i}`
+                    id: `selection-polygon-${i}`,
+                    evented: false // イベントを無効化（描画の安定性向上）
                 }
             );
             this.app.canvas.add(line);

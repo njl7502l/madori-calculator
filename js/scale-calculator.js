@@ -144,6 +144,10 @@ class ScaleCalculator {
         const canvasWidth = this.app.canvas.getWidth();
         const canvasHeight = this.app.canvas.getHeight();
         
+        // グリッドレイヤーのサイズをキャンバスに合わせる
+        this.gridLayer.style.width = `${canvasWidth}px`;
+        this.gridLayer.style.height = `${canvasHeight}px`;
+        
         // グリッドの範囲を計算（余裕を持たせる）
         const numHorizontalLines = Math.ceil(canvasHeight / this.scale.pixelsPerMeter) + 10;
         const numVerticalLines = Math.ceil(canvasWidth / this.scale.pixelsPerMeter) + 10;

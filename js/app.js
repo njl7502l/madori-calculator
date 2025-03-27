@@ -56,19 +56,62 @@ class FloorPlanScaleTool {
     
     handleResize() {
         if (this.canvas && this.canvasContainer.clientWidth > 0) {
-            const originalWidth = this.canvas.getWidth();
-            const originalHeight = this.canvas.getHeight();
-            const containerWidth = this.canvasContainer.clientWidth;
-            
-            const scale = containerWidth / originalWidth;
-            const newHeight = originalHeight * scale;
-            
-            this.canvas.setDimensions({
-                width: containerWidth,
-                height: newHeight
-            });
-            
-            this.canvas.renderAll();
+            // オリジナルの画像サイズが保存されている場合
+            if (this.uploader && this.uploader.imageOriginalWidth && this.uploader.imageOriginalHeight) {
+                const originalWidth = this.uploader.imageOriginalWidth;
+                const originalHeight = this.uploader.imageOriginalHeight;
+                
+                // コンテナのサイズを取得
+                const containerWidth = this.canvasContainer.clientWidth;
+                const containerHeight = this.canvasContainer.clientHeight || window.innerHeight * 0.7;
+                
+                // アスペクト比を維持しながらコンテナに収まるサイズを計算
+                const scale = Math.min(
+                    containerWidth / originalWidth,
+                    containerHeight / originalHeight
+                );
+                
+                const scaledWidth = originalWidth * scale;
+                const scaledHeight = originalHeight * scale;
+                
+                // キャンバスのサイズを更新
+                this.canvas.setDimensions({
+                    width: scaledWidth,
+                    height: scaledHeight
+                });
+                
+                // キャンバス上のすべてのオブジェクトをスケーリング
+                const objects = this.canvas.getObjects();
+                for (let i = 0; i < objects.length; i++) {
+                    const obj = objects[i];
+                    if (obj.type === 'image') {
+                        obj.scaleToWidth(scaledWidth);
+                        obj.set({
+                            left: scaledWidth / 2,
+                            top: scaledHeight / 2
+                        });
+                    }
+                }
+                
+                this.canvas.renderAll();
+            } else {
+                // 画像がまだロードされていない場合は単純なリサイズを実行
+                const originalWidth = this.canvas.getWidth();
+                const originalHeight = this.canvas.getHeight();
+                const containerWidth = this.canvasContainer.clientWidth;
+                
+                if (originalWidth > 0) {
+                    const scale = containerWidth / originalWidth;
+                    const newHeight = originalHeight * scale;
+                    
+                    this.canvas.setDimensions({
+                        width: containerWidth,
+                        height: newHeight
+                    });
+                    
+                    this.canvas.renderAll();
+                }
+            }
         }
     }
     

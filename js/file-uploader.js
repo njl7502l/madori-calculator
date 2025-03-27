@@ -74,9 +74,26 @@ class FileUploader {
                     
                     // 画像をファブリックイメージに変換
                     fabric.Image.fromURL(optimizedImg.src, (fabricImg) => {
-                        // 画像のサイズに合わせてキャンバスのサイズを設定
-                        this.app.canvas.setWidth(fabricImg.width);
-                        this.app.canvas.setHeight(fabricImg.height);
+                        // 元の画像サイズを保存
+                        this.imageOriginalWidth = fabricImg.width;
+                        this.imageOriginalHeight = fabricImg.height;
+                        
+                        // コンテナに合わせて適切なサイズを計算
+                        const containerWidth = this.app.canvasContainer.clientWidth;
+                        const containerHeight = this.app.canvasContainer.clientHeight || window.innerHeight * 0.7;
+                        
+                        // アスペクト比を維持しながらコンテナに収まるサイズを計算
+                        const scale = Math.min(
+                            containerWidth / fabricImg.width,
+                            containerHeight / fabricImg.height
+                        );
+                        
+                        const scaledWidth = fabricImg.width * scale;
+                        const scaledHeight = fabricImg.height * scale;
+                        
+                        // キャンバスのサイズを設定
+                        this.app.canvas.setWidth(scaledWidth);
+                        this.app.canvas.setHeight(scaledHeight);
                         
                         // 画像を選択・移動不可に設定
                         fabricImg.selectable = false;
@@ -84,12 +101,15 @@ class FileUploader {
                         fabricImg.lockMovementX = true;
                         fabricImg.lockMovementY = true;
                         
+                        // 画像をキャンバスサイズに合わせてスケーリング
+                        fabricImg.scaleToWidth(scaledWidth);
+                        
                         // 画像を中央に配置
                         fabricImg.set({
                             originX: 'center',
                             originY: 'center',
-                            left: fabricImg.width / 2,
-                            top: fabricImg.height / 2
+                            left: scaledWidth / 2,
+                            top: scaledHeight / 2
                         });
                         
                         // 画像をキャンバスに追加
@@ -130,6 +150,10 @@ class FileUploader {
     }
     
     optimizeImage(img) {
+        // 元の画像サイズを記録（スケール計算のため）
+        this.originalImageWidth = img.width;
+        this.originalImageHeight = img.height;
+        
         // 大きすぎる画像を適切なサイズにリサイズ
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -157,6 +181,10 @@ class FileUploader {
         // 最適化された画像を返す
         const optimizedImg = new Image();
         optimizedImg.src = canvas.toDataURL('image/jpeg', 0.85);
+        
+        // 最適化後のサイズを記録（リサイズ処理で使用）
+        this.imageOriginalWidth = width;
+        this.imageOriginalHeight = height;
         
         return optimizedImg;
     }
