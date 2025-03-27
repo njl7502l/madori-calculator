@@ -17,15 +17,6 @@ class PolygonSelector {
         // クリアボタン
         this.app.clearSelectionBtn.addEventListener('click', () => this.clearSelection());
         
-        // 多角形を閉じるボタン
-        this.app.finishPolygonBtn.addEventListener('click', () => {
-            if (this.selectedPoints.length > 2) {
-                this.finishPolygon();
-            } else {
-                this.app.showNotification('多角形を描くには最低3点が必要です', 'error');
-            }
-        });
-        
         // キャンバスイベント
         this.setupCanvasEvents();
     }
@@ -45,6 +36,8 @@ class PolygonSelector {
                 this.finishPolygon();
                 return;
             }
+            
+            // 多角形が3点以上あり、最初の点に近くない場合は通常の点として追加
             
             this.selectedPoints.push({x: pointer.x, y: pointer.y});
             this.drawPolygonLines();
