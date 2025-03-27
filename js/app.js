@@ -9,7 +9,6 @@ class FloorPlanScaleTool {
         this.calculateBtn = document.getElementById('calculate-btn');
         this.resetBtn = document.getElementById('reset-btn');
         this.clearSelectionBtn = document.getElementById('clear-selection-btn');
-        this.finishPolygonBtn = document.getElementById('finish-polygon-btn');
         this.loadingIndicator = document.getElementById('loading');
         
         // キャンバス初期化
