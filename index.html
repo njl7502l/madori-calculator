@@ -54,10 +54,6 @@
                         <button id="calculate-btn" aria-label="スケールを計算">スケール計算</button>
                     </div>
                     
-                    <div class="input-group">
-                        <button id="reset-btn" aria-label="ツールをリセット">リセット</button>
-                    </div>
-                    
                     <div class="input-group" id="ruler-controls" style="display: none; margin-top: 20px;">
                         <h3>方眼グリッド操作</h3>
                         <p>グリッド全体をドラッグして移動できます</p>
@@ -69,6 +65,12 @@
     </div>
     
     <div id="notification" class="notification" role="alert" aria-live="polite"></div>
+    
+    <div id="reset-container" style="display: none;">
+        <button id="reset-btn" class="reset-button" aria-label="ツールをリセット">
+            <span class="reset-icon">↺</span> 新しい画像で始める
+        </button>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
     <script src="js/scale-calculator.js"></script>

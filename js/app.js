@@ -116,7 +116,7 @@ class FloorPlanScaleTool {
     
     resetTool() {
         // リセット前の確認
-        if (confirm('現在の作業内容をリセットしますか？')) {
+        if (confirm('現在の作業内容をリセットして、新しい画像を選択しますか？')) {
             // キャンバスを完全にリセット
             if (this.canvas) {
                 this.canvas.dispose();
@@ -132,6 +132,7 @@ class FloorPlanScaleTool {
             // UI表示を初期状態に戻す
             this.uploadArea.style.display = 'block';
             document.getElementById('app-container').style.display = 'none';
+            document.getElementById('reset-container').style.display = 'none';
             
             // グリッドレイヤーをリセット
             const gridLayer = document.getElementById('grid-layer');

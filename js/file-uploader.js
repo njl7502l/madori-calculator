@@ -119,6 +119,7 @@ class FileUploader {
                         // 表示を切り替え
                         this.app.uploadArea.style.display = 'none';
                         document.getElementById('app-container').style.display = 'flex';
+                        document.getElementById('reset-container').style.display = 'block';
                         
                         // リサイズイベントを発火
                         this.app.handleResize();
