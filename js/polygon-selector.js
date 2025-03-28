@@ -9,6 +9,10 @@ class PolygonSelector {
         this.tempLine = null;
         this.polygonCompleted = false;
         
+        // 頂点ドラッグ用の変数
+        this.vertexHandles = [];
+        this.activeVertex = null;
+        
         // イベントリスナー初期化
         this.initEventListeners();
     }
@@ -138,6 +142,48 @@ class PolygonSelector {
                 }
             }
         });
+        
+        // オブジェクト移動イベント（頂点ドラッグ用）
+        this.app.canvas.on('object:moving', (options) => {
+            const movedObject = options.target;
+            
+            // 頂点ハンドルの移動イベント
+            if (movedObject && movedObject.vertexIndex !== undefined) {
+                const index = movedObject.vertexIndex;
+                
+                // 頂点の位置を更新
+                this.selectedPoints[index].x = movedObject.left + movedObject.radius;
+                this.selectedPoints[index].y = movedObject.top + movedObject.radius;
+                
+                // 多角形と線を更新
+                this.updatePolygonAfterDrag();
+            }
+        });
+        
+        // 移動後のイベント
+        this.app.canvas.on('object:modified', (options) => {
+            const modifiedObject = options.target;
+            
+            // 頂点ハンドルの修正完了イベント
+            if (modifiedObject && modifiedObject.vertexIndex !== undefined) {
+                // 多角形と線を更新
+                this.updatePolygonAfterDrag();
+                
+                // 面積再計算して表示
+                if (this.polygonCompleted) {
+                    this.updateAreaText();
+                }
+                
+                // スケール情報をリセット
+                this.resetScaleInfo();
+                
+                // 方眼グリッド操作を非表示
+                document.getElementById('ruler-controls').style.display = 'none';
+                
+                // 通知を表示
+                this.app.showNotification('頂点を移動したため、スケール情報がリセットされました。再計算してください。', 'info');
+            }
+        });
     }
     
     reset() {
@@ -145,6 +191,8 @@ class PolygonSelector {
         this.isDrawing = false;
         this.tempLine = null;
         this.polygonCompleted = false;
+        this.vertexHandles = [];
+        this.activeVertex = null;
     }
     
     clearSelection() {
@@ -157,7 +205,8 @@ class PolygonSelector {
                 obj.id === 'closable-highlight' ||
                 obj.id === 'completed-polygon' ||
                 obj.id === 'completion-message' ||
-                obj.id === 'selection-polygon-area'
+                obj.id === 'selection-polygon-area' ||
+                obj.vertexIndex !== undefined
             )) {
                 this.app.canvas.remove(obj);
             }
@@ -168,6 +217,8 @@ class PolygonSelector {
         this.isDrawing = false;
         this.tempLine = null;
         this.polygonCompleted = false;
+        this.vertexHandles = [];
+        this.activeVertex = null;
         
         // スケール計算結果もリセット
         this.app.scaleCalculator.reset();
@@ -314,6 +365,9 @@ class PolygonSelector {
                 }
             );
             this.app.canvas.add(areaText);
+            
+            // ドラッグ可能な頂点ハンドルを作成
+            this.createDraggableVertexHandles();
         }
         
         this.app.canvas.renderAll();
@@ -322,7 +376,144 @@ class PolygonSelector {
         this.isDrawing = false;
         this.polygonCompleted = true;
         
-        this.app.showNotification('多角形選択が完了しました', 'success');
+        this.app.showNotification('多角形選択が完了しました。頂点をドラッグして位置を調整できます。', 'success');
+    }
+    
+    // ドラッグ可能な頂点ハンドルを作成
+    createDraggableVertexHandles() {
+        // すべての頂点を削除
+        this.app.canvas.getObjects().forEach(obj => {
+            if (obj.id && obj.id.startsWith('selection-polygon-point-')) {
+                this.app.canvas.remove(obj);
+            }
+        });
+        
+        // 頂点ハンドル配列をクリア
+        this.vertexHandles = [];
+        
+        // デバイスタイプに基づいてハンドルサイズを調整
+        const isMobile = window.innerWidth <= 768;
+        const handleRadius = isMobile ? 8 : 6;
+        
+        // 各頂点にドラッグ可能なハンドルを作成
+        this.selectedPoints.forEach((point, index) => {
+            const vertexHandle = new fabric.Circle({
+                left: point.x - handleRadius,
+                top: point.y - handleRadius,
+                radius: handleRadius,
+                fill: 'rgba(255, 0, 0, 0.7)',
+                stroke: 'white',
+                strokeWidth: 1,
+                selectable: true,
+                hasBorders: false,
+                hasControls: false,
+                hoverCursor: 'move',
+                vertexIndex: index,
+                id: `vertex-handle-${index}`
+            });
+            
+            this.app.canvas.add(vertexHandle);
+            this.vertexHandles.push(vertexHandle);
+        });
+        
+        this.app.canvas.renderAll();
+    }
+    
+    // スケール情報をリセット
+    resetScaleInfo() {
+        // スケール計算結果をリセット
+        this.app.scaleCalculator.reset();
+        
+        // グリッドレイヤーをクリア
+        const gridLayer = document.getElementById('grid-layer');
+        gridLayer.innerHTML = '';
+        gridLayer.style.pointerEvents = 'none';
+        
+        // 成功メッセージを削除（スケール計算結果の表示）
+        const existingMsg = document.querySelector('.success-message');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+    }
+    
+    // ドラッグ後の多角形と線を更新
+    updatePolygonAfterDrag() {
+        // 既存の多角形と線を削除
+        this.app.canvas.getObjects().forEach(obj => {
+            if (obj.id === 'completed-polygon' || 
+                (obj.id && obj.id.startsWith('selection-polygon-'))) {
+                this.app.canvas.remove(obj);
+            }
+        });
+        
+        // 新しい多角形を作成
+        const polygonPoints = [];
+        this.selectedPoints.forEach(point => {
+            polygonPoints.push({x: point.x, y: point.y});
+        });
+        
+        const polygon = new fabric.Polygon(polygonPoints, {
+            fill: 'rgba(255, 0, 0, 0.2)',
+            stroke: 'red',
+            strokeWidth: 2,
+            selectable: false,
+            id: 'completed-polygon',
+        });
+        
+        // 多角形を一番下に配置（画像の上に表示）
+        this.app.canvas.insertAt(polygon, 1);
+        
+        // 各点を結ぶ線を再描画
+        const n = this.selectedPoints.length;
+        for (let i = 0; i < n; i++) {
+            const nextIndex = (i + 1) % n;
+            const line = new fabric.Line(
+                [this.selectedPoints[i].x, this.selectedPoints[i].y, 
+                 this.selectedPoints[nextIndex].x, this.selectedPoints[nextIndex].y],
+                {
+                    stroke: 'red',
+                    strokeWidth: 2,
+                    selectable: false,
+                    id: `selection-polygon-${i}`,
+                    evented: false
+                }
+            );
+            this.app.canvas.add(line);
+        }
+        
+        this.app.canvas.renderAll();
+    }
+    
+    // 面積テキストを更新
+    updateAreaText() {
+        // 既存の面積テキストを削除
+        this.app.canvas.getObjects().forEach(obj => {
+            if (obj.id === 'selection-polygon-area') {
+                this.app.canvas.remove(obj);
+            }
+        });
+        
+        // 面積を再計算
+        const area = this.calculatePolygonArea(this.selectedPoints);
+        const centroid = this.calculatePolygonCentroid(this.selectedPoints);
+        
+        // 新しい面積テキストを追加
+        const areaText = new fabric.Text(
+            `選択範囲の面積: ${area.toFixed(0)}px²`, 
+            {
+                left: centroid.x,
+                top: centroid.y + 10,
+                fontSize: 14,
+                fill: 'black',
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                padding: 5,
+                selectable: false,
+                id: 'selection-polygon-area',
+                originX: 'center'
+            }
+        );
+        this.app.canvas.add(areaText);
+        this.app.canvas.renderAll();
     }
     
     calculatePolygonArea(points) {
