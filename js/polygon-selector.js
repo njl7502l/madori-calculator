@@ -26,6 +26,15 @@ class PolygonSelector {
     }
     
     setupCanvasEvents() {
+        // イベントリスナーが既に登録されている場合は重複登録を防ぐために削除
+        this.app.canvas.off('mouse:down');
+        this.app.canvas.off('mouse:move');
+        this.app.canvas.off('touch:longpress');
+        this.app.canvas.off('touch:tap');
+        this.app.canvas.off('touch:move');
+        this.app.canvas.off('object:moving');
+        this.app.canvas.off('object:modified');
+        
         // マウスダウンイベント（クリック）
         this.app.canvas.on('mouse:down', (options) => {
             if (this.app.scaleCalculator.isScaleSet() || this.polygonCompleted) return;
