@@ -144,6 +144,9 @@ class FloorPlanScaleTool {
             this.selector.reset();
             this.scaleCalculator.reset();
             
+            // 新しいキャンバスに対してイベントリスナーを再設定
+            this.selector.setupCanvasEvents();
+            
             // UI表示を初期状態に戻す
             this.uploadArea.style.display = 'block';
             document.getElementById('app-container').style.display = 'none';
