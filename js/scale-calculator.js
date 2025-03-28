@@ -25,6 +25,30 @@ class ScaleCalculator {
         
         // グリッドレイヤー参照
         this.gridLayer = document.getElementById('grid-layer');
+        
+        // イベントリスナーフラグ
+        this.toggleButtonListenerAdded = false;
+        
+        // 初期化時にボタンイベントリスナーを設定
+        this.initToggleButtonListener();
+    }
+    
+    // グリッド表示切替ボタンのイベントリスナーを初期化
+    initToggleButtonListener() {
+        const toggleBtn = document.getElementById('toggle-grid-btn');
+        if (toggleBtn) {
+            // イベントリスナーを一度だけ設定
+            toggleBtn.addEventListener('click', (e) => {
+                // イベント伝播を停止
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // グリッド表示を切り替え
+                this.toggleGridVisibility();
+            });
+            
+            this.toggleButtonListenerAdded = true;
+        }
     }
     
     reset() {
@@ -92,8 +116,11 @@ class ScaleCalculator {
         // グリッド操作の説明を表示
         document.getElementById('ruler-controls').style.display = 'block';
         
-        // 表示切替ボタンのイベントリスナーを設定
-        document.getElementById('toggle-grid-btn').addEventListener('click', () => this.toggleGridVisibility());
+        // ボタンのテキストを初期状態に戻す
+        const toggleGridBtn = document.getElementById('toggle-grid-btn');
+        if (toggleGridBtn) {
+            toggleGridBtn.textContent = 'グリッド表示を隠す';
+        }
         
         // 成功メッセージを表示
         const scaleInfoDiv = document.createElement('div');
